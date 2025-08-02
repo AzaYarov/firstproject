@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Мониторинг ESP</title>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #e0f7fa, #ffffff);
+      color: #333;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+      font-size: 2.2em;
+      color: #00796b;
+    }
+
+    #chart-container {
+      width: 95%;
+      max-width: 960px;
+      margin: 0 auto 40px auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #00796b;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      background: #004d40;
+      transform: scale(1.05);
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    #relay-status {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .link-section {
+      margin-top: 30px;
+    }
+
+    .link-section a {
+      display: inline-block;
+      background: #0288d1;
+      color: white;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: background 0.3s ease;
+    }
+
+    .link-section a:hover {
+      background: #01579b;
+    }
+  </style>
+</head>
+<body>
+  <h1>Мониторинг ESP8266: Температура и Влажность</h1>
+
+  <div id="chart-container"></div>
+
+  <div class="btn-group">
+    <button onclick="relayOn()">Включить реле</button>
+    <button onclick="relayOff()">Выключить реле</button>
+  </div>
+
+  <p id="relay-status">Состояние реле: —</p>
+
+  <div class="link-section">
+    <a href="details.html">Подробнее о данных</a>
+  </div>
+
+  <script>
+    let chart;
+
+    function updateChart() {
+      fetch('data.php')
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data.length === 0) return;
+
+          const tempSeries = data.map(d => [d.timestamp, parseFloat(d.temp)]);
+          const humSeries = data.map(d => [d.timestamp, parseFloat(d.hum)]);
+          const latestRelay = parseInt(data[data.length - 1].relay);
+
+          // Обновление состояния реле
+          const relayStatus = document.getElementById('relay-status');
+          relayStatus.textContent = "Состояние реле: " + (latestRelay ? "Включено" : "Выключено");
+          relayStatus.style.color = latestRelay ? "#2e7d32" : "#b71c1c";
+
+          // Инициализация графика
+          if (!chart) {
+            chart = Highcharts.chart('chart-container', {
+              chart: {
+                type: 'areaspline',
+                backgroundColor: '#ffffff',
+                animation: true
+              },
+              title: {
+                text: 'Температура и Влажность (история)',
+                style: { fontSize: '20px', color: '#00796b' }
+              },
+              xAxis: {
+                type: 'category',
+                title: { text: 'Время (ESP)' },
+                labels: {
+                  rotation: 45,
+                  style: { fontSize: '12px' }
+                }
+              },
+              yAxis: {
+                title: { text: 'Значение' },
+                gridLineColor: '#e0e0e0'
+              },
+              tooltip: {
+                shared: true,
+                crosshairs: true,
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                borderColor: '#ccc',
+                style: { color: '#333' }
+              },
+              plotOptions: {
+                areaspline: {
+                  fillOpacity: 0.2,
+                  marker: { enabled: false }
+                }
+              },
+              series: [
+                {
+                  name: 'Температура (°C)',
+                  data: tempSeries,
+                  color: '#ef5350',
+                  fillOpacity: 0.3
+                },
+                {
+                  name: 'Влажность (%)',
+                  data: humSeries,
+                  color: '#42a5f5',
+                  fillOpacity: 0.3
+                }
+              ]
+            });
+          } else {
+            chart.series[0].setData(tempSeries, true);
+            chart.series[1].setData(humSeries, true);
+          }
+        })
+        .catch(err => console.error('Ошибка загрузки данных:', err));
+    }
+
+    function relayOn() {
+      fetch('http://192.168.0.11/on');
+    }
+
+    function relayOff() {
+      fetch('http://192.168.0.11/off');
+    }
+
+    setInterval(updateChart, 10000);
+    updateChart();
+  </script>
+</body>
+</html>

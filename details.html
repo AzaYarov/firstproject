@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Детальный анализ данных</title>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f8f8;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00796b;
+      margin-bottom: 30px;
+    }
+
+    #chart-container {
+      width: 95%;
+      max-width: 960px;
+      margin: 0 auto 30px auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+
+    th {
+      background-color: #00796b;
+      color: #fff;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      text-decoration: none;
+      background-color: #00796b;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      transition: background 0.3s;
+    }
+
+    .back-link:hover {
+      background-color: #004d40;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Подробный анализ данных с ESP8266</h1>
+
+  <div id="chart-container"></div>
+
+  <table id="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Температура (°C)</th>
+        <th>Влажность (%)</th>
+        <th>Состояние реле</th>
+        <th>Время (ESP)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Данные будут вставлены здесь -->
+    </tbody>
+  </table>
+
+  <div style="text-align: center;">
+    <a class="back-link" href="control.html">← Назад к панели управления</a>
+  </div>
+
+  <script>
+    fetch('data.php')
+      .then(response => response.json())
+      .then(data => {
+        // График
+        Highcharts.chart('chart-container', {
+          chart: {
+            type: 'spline',
+            zoomType: 'x',
+            backgroundColor: '#ffffff'
+          },
+          title: {
+            text: 'Температура, Влажность и Состояние Реле (расширенно)'
+          },
+          xAxis: {
+            type: 'category',
+            title: { text: 'Время (ESP)' },
+            labels: { rotation: 45 }
+          },
+          yAxis: [{
+            title: { text: 'Температура / Влажность' }
+          }, {
+            title: { text: 'Реле' },
+            opposite: true,
+            min: 0,
+            max: 1
+          }],
+          tooltip: {
+            shared: true,
+            crosshairs: true
+          },
+          series: [
+            {
+              name: 'Температура (°C)',
+              data: data.filter((_, i) => i % 10 === 0).map(d => [d.timestamp, parseFloat(d.temp)]),
+              color: '#e53935'
+            },
+            {
+              name: 'Влажность (%)',
+              data: data.filter((_, i) => i % 10 === 0).map(d => [d.timestamp, parseFloat(d.hum)]),
+              color: '#1e88e5'
+            },
+            {
+              name: 'Реле',
+              data: data.filter((_, i) => i % 10 === 0).map(d => [d.timestamp, parseInt(d.relay)]),
+              yAxis: 1,
+              type: 'scatter',
+              marker: { symbol: 'circle', radius: 4 },
+              color: '#4caf50'
+            }
+          ]
+        });
+
+        // Таблица
+        const tbody = document.querySelector('#data-table tbody');
+        data.forEach((item, index) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${parseFloat(item.temp).toFixed(1)}</td>
+            <td>${parseFloat(item.hum).toFixed(1)}</td>
+            <td>${item.relay == 1 ? 'Включено' : 'Выключено'}</td>
+            <td>${item.timestamp}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      })
+      .catch(err => {
+        const tbody = document.querySelector('#data-table tbody');
+        tbody.innerHTML = `<tr><td colspan="5">Ошибка загрузки данных: ${err}</td></tr>`;
+      });
+  </script>
+
+</body>
+</html>
+  
